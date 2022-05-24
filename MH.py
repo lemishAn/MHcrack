@@ -12,11 +12,13 @@ def vec_num(vec, n):
 def add_vecs (vec1, vec2):
     for i in range(len(vec1)):
         vec1[i] += vec2[i]
+        vec1[i] = round(vec1[i], 4)
     return(vec1)
 
 def minus_vecs (vec1, vec2):
     for i in range(len(vec1)):
         vec1[i] -= vec2[i]
+        vec1[i] = round(vec1[i], 4)
     return(vec1)
 
 
@@ -53,11 +55,9 @@ def generate_numbers(n, b, u):
         left = 1
         right = 2 ** (b-n)
     u.append(randint(left, right))
-    # print(u)
     if len(u) < n:
         return generate_numbers(n, b, u)
     else:
-        # print(u)
         return u
 
 def public_key(a_inv, u, S):
@@ -70,7 +70,6 @@ def public_key(a_inv, u, S):
 
 def volume(u: list, b):
     sum_u = 0
-    # print(u)
     for i in u:
         sum_u += i
     s = randint(sum_u, 2 ** b)
@@ -106,8 +105,6 @@ def in_file_enc(c):
 def genkeys(n, b):
     u = []
     u = generate_numbers(int(n), int(b), u)
-    # print(u)
-    # print(type(u))
     S = volume(u, int(b))
     a = simple_num(S)
     a_inv = inverse(a, S)
@@ -120,8 +117,6 @@ def genkeys(n, b):
 def enc(M, w):
     m_byte = M.encode()
     m_bit = bitstring.BitArray(m_byte)[2:]
-    print(m_bit[0], 'bit')
-    print(len(m_bit.bin))
     if len(m_bit) > len(w):
         print('The first n bits were encoded')
     if len(m_bit) < len(w):
@@ -130,7 +125,6 @@ def enc(M, w):
     c = 0
     for i in range(len(w)):
         c += m_bit[i]*int(w[i])
-    print(c)
     in_file_enc(c)
     return
 
@@ -138,75 +132,57 @@ def enc(M, w):
 def mu(bi,bjk):
     sp_up = 0
     sp_down = 0
-    # print('len', len(bi))
-    # print('b: ', bi, '\n')
-    for i in range(0,len(bi)):
-        # print(bi[i], bjk[i])
+    for i in range(len(bi)):
         sp_up += bi[i]*bjk[i]
         sp_down += bjk[i]**2
-    # print(sp_up, sp_down, '\n')
-    return sp_up/sp_down
+    mu_ij = sp_up/sp_down
+    return round(mu_ij, 4)
 
 
 def norma_2(vec):
     sp = 0
-    for i in range(0,len(vec)):
-        sp += vec[i]**2
-    return sp
+    for i in range(len(vec)):
+        sp += (vec[i]**2)    
+    return round(sp, 4)
 
 
-def orto(b):
-    bcopy = list()
+def GramSchmidt(b):
+    b_ort = list()
     for i in range(0,len(b)):
         s = [0]*len(b[0])
         if i != 0:
             for j in range(0,i):
-                # print(bcopy[j])
-                my_ij = mu(b[i],b[j])
-                tmp = bcopy[j].copy()
-                s += vec_num(tmp, my_ij)  
-            cur = b[i] + s
+                my_ij = mu(b[i],b_ort[j])
+                tmp = b_ort[j].copy()
+                s = add_vecs(s, vec_num(tmp, my_ij))  
+            cur = minus_vecs(b[i], s)
         else:
             cur = b[i]
-        bcopy.append(cur)
-    return bcopy
+        b_ort.append(cur)
+    return b_ort
 
-def GrammShmidt(b, n):
-    bcopy = orto(b)
+def LLL(b, n):
+    b_ort = GramSchmidt(b)
     delta = 3/4
-    i=2
-    while i != n:
-        for j in range(i-1,0,-1):
-            if i != 0  and abs(mu(b[i],bcopy[j])) > 0.5:
+    i=1
+    # Было i = 2
+    while i < n:
+        for j in range(i-1,-1,-1):
+            if abs(mu(b[i],b_ort[j])) > 0.5:
                 #drob = mu(b[i],b[j]) - int(mu(b[i],b[j]))
                 tmp_bj = b[j].copy()
-                b[i] = minus_vecs(b[i], vec_num(tmp_bj, round(mu(b[i],bcopy[j]))))
-                #bcopy[i] = b[i] - 
-        if i != 0 and (delta - mu(b[i],bcopy[i-1])) * norma_2(bcopy[i-1]) <= norma_2(bcopy[i]):
+                b[i] = minus_vecs(b[i], vec_num(tmp_bj, round(mu(b[i],b_ort[j]))))
+                b_ort = GramSchmidt(b)
+        if (delta - (mu(b[i],b_ort[i-1]))**2) * norma_2(b_ort[i-1]) <= norma_2(b_ort[i]):
             i += 1
         else:
-            tmp = b[i]
-            b[i] = b[i-1]
-            b[i-1] =tmp
-            s = [0]*len(b[0])
-            if i-1 != 0:
-                for j in range(0,i-1):
-                    tmp = bcopy[j].copy()
-                    s += vec_num(tmp, mu(b[i-1],b[j]))
-            bcopy[i-1] = b[i-1] + s
-            s = [0]*len(b[0])
-            if i != 0:
-                for j in range(0,i):
-                    tmp = bcopy[j].copy()
-                    s += vec_num(tmp, mu(b[i],b[j]))
-            bcopy[i] = b[i] + s
+            b[i], b[i-1] = b[i-1], b[i]
             i = max(i-1,1)
     return b
 
 def check(b,w,c):
     for i in b:
         flag = True
-        print(i)
         for j in range(len(i)):
             if i[j] != 0 or i[j] != 0:
                 flag = False
@@ -221,12 +197,10 @@ def check(b,w,c):
 
 
 def basisCreation(w,c):
-    print('cipher', c)
     b = list()
     tmp = list()
     for i in range(0,len(w)+1):
         tmp.append(0)
-    # print(tmp)
     for i in range(0,len(w)):
         tmp2 = tmp.copy()
         tmp2[i] = 1
@@ -234,7 +208,6 @@ def basisCreation(w,c):
         b.append(tmp2)
     tmp[len(w)] = int(c)
     b.append(tmp)
-    # print(b)
     return b
 
 
@@ -243,37 +216,27 @@ def in_file_dec(vec):
     for i in vec:
         str_01 += str(i)
     str_bit = bitstring.BitArray(str_01)
-    print(type(str_bit))
-    print(str_bit.hex)
     dec_txt = str_bit.hex.decode('utf-8')
-    print(dec_txt)
     file = open('decryption_text','w')
     file.write(dec_txt)
     file.close()
     return
 
 def dec(w, c):
-    # Для проверки
-    # w =[575, 436, 1586, 1030, 1921, 569, 721, 1183, 1570]
-    # c = 6665
-
-
     b = basisCreation(w, c)
-    b_new = GrammShmidt(b, len(w)+1)
+    b_new = LLL(b, len(w)+1)
     flag, vec = check(b_new, w, int(c))
     if flag == 0:
-        print(vec)
         in_file_dec(vec)
         return
     else:
         b = basisCreation(w, vec)
-        b_new = GrammShmidt(b, len(w)+1)
+        b_new = LLL(b, len(w)+1)
         flag, vec = check(b_new, w, c)
         if flag == 0:
             in_file_dec(vec)
             return
         else:
-            in_file_dec([0, 1, 1, 1, 0, 0, 1, 0])
             print('Unable to decode')
             return
 
@@ -344,5 +307,4 @@ while (flag == True):
             dec(w,c)    
         else:
             mode = input("unknown command, repeat input ")
-
 
